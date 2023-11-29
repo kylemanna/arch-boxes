@@ -8,7 +8,8 @@ shopt -s extglob
 readonly DEFAULT_DISK_SIZE="2G"
 readonly IMAGE="image.img"
 # shellcheck disable=SC2016
-readonly MIRROR='https://geo.mirror.pkgbuild.com/$repo/os/$arch'
+#readonly MIRROR='https://geo.mirror.pkgbuild.com/$repo/os/$arch'
+readonly MIRROR='https://mirror.rackspace.com/archlinux/$repo/os/$arch'
 
 function init() {
   readonly ORIG_PWD="${PWD}"
@@ -35,6 +36,7 @@ function cleanup() {
   fi
   if [ -n "${MOUNT:-}" ] && mountpoint -q "${MOUNT}"; then
     # We do not want risking deleting ex: the package cache
+    fuser -k -m "${MOUNT}" && sleep 1 || true
     umount --recursive "${MOUNT}" || exit 1
   fi
   if [ -n "${TMPDIR:-}" ]; then
@@ -67,6 +69,7 @@ function bootstrap() {
   cat <<EOF >pacman.conf
 [options]
 Architecture = auto
+ParallelDownloads = 10
 
 [core]
 Include = mirrorlist
@@ -77,7 +80,7 @@ EOF
   echo "Server = ${MIRROR}" >mirrorlist
 
   # We use the hosts package cache
-  pacstrap -c -C pacman.conf -K -M "${MOUNT}" base linux grub openssh sudo btrfs-progs dosfstools efibootmgr
+  pacstrap -c -C pacman.conf -K -M "${MOUNT}" base linux grub openssh sudo btrfs-progs dosfstools efibootmgr python
   cp mirrorlist "${MOUNT}/etc/pacman.d/"
 }
 
@@ -125,6 +128,7 @@ function mount_image() {
 
 # Unmount image helper (umount + detach loop device)
 function unmount_image() {
+  fuser -k -m "${MOUNT}" && sleep 1 || true
   umount --recursive "${MOUNT}"
   losetup -d "${LOOPDEV}"
   LOOPDEV=""
