@@ -7,3 +7,5 @@ output-*
 *.qcow2
 /tmp/
 /output/
+/images/disabled/
+/net/disabled/
