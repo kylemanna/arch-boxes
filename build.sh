@@ -34,6 +34,7 @@ function cleanup() {
   if [ -n "${LOOPDEV:-}" ]; then
     losetup -d "${LOOPDEV}"
   fi
+  [ -n "${LOOPDEV2:-}" ] && losetup -d "${LOOPDEV2}"
   if [ -n "${MOUNT:-}" ] && mountpoint -q "${MOUNT}"; then
     # We do not want risking deleting ex: the package cache
     fuser -k -m "${MOUNT}" && sleep 1 || true
@@ -48,14 +49,15 @@ trap cleanup EXIT
 # Create the disk, partitions it, format the partition and mount the filesystem
 function setup_disk() {
   truncate -s "${DEFAULT_DISK_SIZE}" "${IMAGE}"
+  LOOPDEV=$(losetup -b "${SECTOR_SIZE:-512}" --find --partscan --show "${IMAGE}")
+
   sgdisk --align-end \
     --clear \
     --new 0:0:+1M --typecode=0:ef02 --change-name=0:'BIOS boot partition' \
     --new 0:0:+300M --typecode=0:ef00 --change-name=0:'EFI system partition' \
     --new 0:0:0 --typecode=0:8304 --change-name=0:'Arch Linux root' \
-    "${IMAGE}"
+    "${LOOPDEV}"
 
-  LOOPDEV=$(losetup --find --partscan --show "${IMAGE}")
   # Partscan is racy
   wait_until_settled "${LOOPDEV}"
   mkfs.fat -F 32 -S 4096 "${LOOPDEV}p2"
@@ -153,10 +155,13 @@ function create_image() {
   cp -a "${IMAGE}" "${tmp_image}"
   if [ -n "${DISK_SIZE}" ]; then
     truncate -s "${DISK_SIZE}" "${tmp_image}"
-    sgdisk --align-end --delete 3 "${tmp_image}"
+    LOOPDEV2=$(losetup -b "${SECTOR_SIZE:-512}" --find --partscan --show "${tmp_image}")
+    sgdisk --align-end --delete 3 "${LOOPDEV2}"
     sgdisk --align-end --move-second-header \
       --new 0:0:0 --typecode=0:8304 --change-name=0:'Arch Linux root' \
-      "${tmp_image}"
+      "${LOOPDEV2}"
+    losetup -d "${LOOPDEV2}"
+    LOOPDEV2=""
   fi
   mount_image "${tmp_image}"
   if [ -n "${DISK_SIZE}" ]; then
