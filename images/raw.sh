@@ -3,7 +3,8 @@ CFG=$(sed -e 's:.*/\(.*\).sh:\1:' <<< "$BASH_SOURCE" )
 # shellcheck disable=SC2034,SC2154
 IMAGE_NAME="Arch-Linux-x86_64-basic-${CFG}-${build_version}.bin"
 # It is meant for local usage so the disk should be "big enough".
-DISK_SIZE="3G"
+#DISK_SIZE="3G"
+DISK_SIZE=""
 PACKAGES=()
 SERVICES=()
 
@@ -17,7 +18,8 @@ function pre() {
 
   local NET="${ORIG_PWD}/net/${CFG}.network"
   if [ -r "$NET" ]; then
-    cp -v "$NET" "${MOUNT}/etc/systemd/network/80-static.network"
+    mkdir -pv "${MOUNT}/etc/systemd/network/"
+    cp -v "$NET" "${MOUNT}/etc/systemd/network/80-${CFG}.network"
   else
     echo 'Failed to find network config!'
     exit 1

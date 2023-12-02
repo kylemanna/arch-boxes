@@ -9,6 +9,7 @@ exec docker run --rm -it \
     --workdir /b \
     -e SUDO_GID \
     -e SUDO_UID \
+    -e SECTOR_SIZE \
     -v "$b:/b" \
     -v /dev:/dev \
     -v /run/udev:/run/udev \

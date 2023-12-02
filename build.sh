@@ -82,7 +82,7 @@ EOF
   echo "Server = ${MIRROR}" >mirrorlist
 
   # We use the hosts package cache
-  pacstrap -c -C pacman.conf -K -M "${MOUNT}" base linux grub openssh sudo btrfs-progs dosfstools efibootmgr python
+  pacstrap -c -C pacman.conf -K -M "${MOUNT}" base linux grub openssh sudo btrfs-progs dosfstools efibootmgr python iptables-nft neovim
   cp mirrorlist "${MOUNT}/etc/pacman.d/"
 }
 
@@ -120,7 +120,7 @@ function wait_until_settled() {
 
 # Mount image helper (loop device + mount)
 function mount_image() {
-  LOOPDEV=$(losetup --find --partscan --show "${1:-${IMAGE}}")
+  LOOPDEV=$(losetup -b "${SECTOR_SIZE:-512}" --find --partscan --show "${IMAGE}")
   # Partscan is racy
   wait_until_settled "${LOOPDEV}"
   mount -o compress-force=zstd "${LOOPDEV}p3" "${MOUNT}"
@@ -156,6 +156,7 @@ function create_image() {
   if [ -n "${DISK_SIZE}" ]; then
     truncate -s "${DISK_SIZE}" "${tmp_image}"
     LOOPDEV2=$(losetup -b "${SECTOR_SIZE:-512}" --find --partscan --show "${tmp_image}")
+    wait_until_settled "${LOOPDEV2}"
     sgdisk --align-end --delete 3 "${LOOPDEV2}"
     sgdisk --align-end --move-second-header \
       --new 0:0:0 --typecode=0:8304 --change-name=0:'Arch Linux root' \
